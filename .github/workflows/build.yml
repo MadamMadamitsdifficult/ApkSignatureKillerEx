@@ -20,34 +20,32 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK (cmdline-tools)
+      # 使用 GitHub runner 自带的 Android SDK (/usr/local/lib/android/sdk)
+      - name: Fix SDK env vars (统一 SDK 路径)
         run: |
-          mkdir -p "$HOME/android-sdk/cmdline-tools"
-          curl -sL -o /tmp/ct.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q /tmp/ct.zip -d "$HOME/android-sdk/cmdline-tools"
-          mv "$HOME/android-sdk/cmdline-tools/cmdline-tools" "$HOME/android-sdk/cmdline-tools/latest"
-          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager" >> "$GITHUB_ENV"
 
-      - name: Accept SDK licenses (直接写 license 文件)
+      - name: Accept SDK licenses
         run: |
-          mkdir -p "$ANDROID_HOME/licenses"
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" >  "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" >> "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "84831b9409646a918e30573bab4c9c91346d8abd" >  "$ANDROID_HOME/licenses/android-sdk-preview-license"
-          echo "d975f751698a77b662f1254ddbeed3901e976f5a" >  "$ANDROID_HOME/licenses/intel-android-extra-license"
-          echo "license 文件写入完成:"
-          ls -la "$ANDROID_HOME/licenses"
+          sudo mkdir -p "$ANDROID_HOME/licenses"
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" | sudo tee -a "$ANDROID_HOME/licenses/android-sdk-license" > /dev/null
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" | sudo tee -a "$ANDROID_HOME/licenses/android-sdk-license" > /dev/null
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" | sudo tee -a "$ANDROID_HOME/licenses/android-sdk-license" > /dev/null
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" | sudo tee "$ANDROID_HOME/licenses/android-sdk-preview-license" > /dev/null
+          echo "d975f751698a77b662f1254ddbeed3901e976f5a" | sudo tee "$ANDROID_HOME/licenses/intel-android-extra-license" > /dev/null
+          sudo chmod -R a+r "$ANDROID_HOME/licenses"
+          echo "license 写入完成"
 
-      - name: Install Platform 32 / NDK 24 / CMake
+      - name: Install Platform 32 / NDK 24 / CMake (补装缺失组件)
         run: |
-          sdkmanager --install "platform-tools" \
+          $SDKMANAGER --install "platform-tools" \
             "platforms;android-32" \
             "build-tools;33.0.1" \
             "ndk;24.0.8215888" \
             "cmake;3.22.1"
-          sdkmanager --list_installed | grep -E "platforms;android-32|ndk;24.0.8215888|cmake;3.22.1"
+          $SDKMANAGER --list_installed | grep -E "platforms;android-32|ndk;24.0.8215888|cmake;3.22.1"
 
       - name: Build debug APK (自带 fake.jks 签名)
         run: |
